@@ -984,6 +984,66 @@ rbusError_t fetchCachedBlobHandler(rbusHandle_t handle, char const* methodName, 
 	return RBUS_ERROR_BUS_ERROR;
 }
 
+/* method handler to fetch the subdoc version in the DB*/
+rbusError_t fetchDBSubDocVersion(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle)
+{
+        (void)handle;
+        rbusValue_t value;
+        (void)outParams;
+        (void)asyncHandle;
+
+        rbusProperty_t tempProp;
+        rbusValue_t propValue;
+
+        int len=0;
+        char * valueString = NULL;
+        void *name = NULL;
+        uint32_t etag = 0;
+
+        webconfig_db_data_t *curr_node=get_global_db_node();
+        WebcfgInfo("methodHandler called: %s\n",methodName);
+        rbusObject_fwrite(inParams,1,stdout);
+
+
+        tempProp = rbusObject_GetProperties(inParams);
+        propValue = rbusProperty_GetValue(tempProp);
+        valueString = (char *)rbusValue_GetString(propValue, &len);
+
+        if(strcmp(methodName, METHOD_APPIED_SUBDOC_VERSION)==0)
+        {
+                while(curr_node!=NULL)
+                {
+                        if(strcmp(curr_node->name,valueString)==0)
+                        {
+                                name = curr_node->name;
+                                etag = curr_node->version;
+                        }
+                        curr_node=curr_node->next;
+                }
+
+               if(name!=NULL)
+                {
+                        rbusValue_Init(&value);
+                        rbusValue_SetString(value,name);
+                        rbusObject_SetValue(outParams,"name",value);
+                        rbusValue_Release(value);
+
+                        rbusValue_Init(&value);
+                        rbusValue_SetUInt32(value, etag);
+                        rbusObject_SetValue(outParams, "etag", value);
+                        rbusValue_Release(value);
+                }
+                else{
+                        return RBUS_ERROR_INVALID_INPUT;
+                }
+        }
+        else
+        {
+                return RBUS_ERROR_BUS_ERROR;
+        }
+        return RBUS_ERROR_SUCCESS;
+}
+
 /**
  * Register data elements for dataModel implementation using rbus.
  * Data element over bus will be Device.X_RDK_WebConfig.RfcEnable, Device.X_RDK_WebConfig.ForceSync,
@@ -1012,7 +1072,8 @@ WEBCFG_STATUS regWebConfigDataModel()
 		{WEBCFG_SUPPORTED_DOCS_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {webcfgSupportedDocsGetHandler, webcfgSupportedDocsSetHandler, NULL, NULL, NULL, NULL}},
 		{WEBCFG_SUPPORTED_VERSION_PARAM, RBUS_ELEMENT_TYPE_PROPERTY, {webcfgSupportedVersionGetHandler, webcfgSupportedVersionSetHandler, NULL, NULL, NULL, NULL}},
 		{WEBCFG_UPSTREAM_EVENT, RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, eventSubHandler, NULL}},
-		{WEBCFG_UTIL_METHOD, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, fetchCachedBlobHandler}}
+		{WEBCFG_UTIL_METHOD, RBUS_ELEMENT_TYPE_METHOD, {NULL, NULL, NULL, NULL, NULL, fetchCachedBlobHandler}},
+		{METHOD_APPIED_SUBDOC_VERSION,RBUS_ELEMENT_TYPE_METHOD,{NULL,NULL,NULL,NULL,NULL,fetchDBSubDocVersion}}
 	};
 	ret = rbus_regDataElements(rbus_handle, NUM_WEBCFG_ELEMENTS, dataElements);
 	if(ret == RBUS_ERROR_SUCCESS)
