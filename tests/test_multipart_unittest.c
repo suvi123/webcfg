@@ -170,7 +170,7 @@ void test_replaceMac(){
 	char c[] = "{sss}";
 	char *webConfigURL = replaceMacWord(configURL, c, get_deviceMAC());
 	CU_ASSERT_STRING_EQUAL(webConfigURL,"https://config/b42xxxxxxxxx/com");
-	
+
 	
 }
 
@@ -222,6 +222,54 @@ void test_checkRootUpdate(){
 		WEBCFG_FREE(tmpData->error_details);
 		WEBCFG_FREE(tmpData);
 	}
+
+}
+
+void test_checkRootDelete_success(){
+	webconfig_tmp_data_t *tmpData = (webconfig_tmp_data_t *)malloc(sizeof(webconfig_tmp_data_t));
+
+	//tmpData->name not equal to root and temp->status = success
+	tmpData->name = strdup("wan");
+	tmpData->version = 410448631;
+	tmpData->status = strdup("success");
+        tmpData->trans_id = 14464;
+        tmpData->retry_count = 0;
+        tmpData->error_code = 0;
+        tmpData->error_details = strdup("success");
+        tmpData->next = NULL;
+	set_global_tmp_node(tmpData);
+	int m=checkRootDelete();
+	CU_ASSERT_EQUAL(0,m);
+	if(tmpData){
+		WEBCFG_FREE(tmpData);
+	}
+}
+
+void test_checkRootDelete_fail(){
+	webconfig_tmp_data_t *tmpData = (webconfig_tmp_data_t *)malloc(sizeof(webconfig_tmp_data_t));
+
+	//tmpData->name not equal to root and temp->status not equal to success
+	tmpData->name = strdup("wan");
+        tmpData->version = 410448631;
+	tmpData->status = strdup("pending");
+	tmpData->trans_id = 14464;
+        tmpData->retry_count = 0;
+        tmpData->error_code = 0;
+        tmpData->error_details = strdup("success");
+        tmpData->next = NULL;
+	set_global_tmp_node(tmpData);
+        int n=checkRootDelete();
+        CU_ASSERT_NOT_EQUAL(0,n);
+
+	if(tmpData){
+                WEBCFG_FREE(tmpData->name);
+        }
+
+	//tmpData->name equal to root
+        tmpData->name=strdup("root");
+        set_global_tmp_node(tmpData);
+        int o=checkRootDelete();
+        CU_ASSERT_NOT_EQUAL(0,o);
 
 }
 
@@ -328,7 +376,9 @@ void add_suites( CU_pSuite *suite )
       CU_add_test( *suite, "test  createCurlHeader", test_createHeader);
       CU_add_test( *suite, "test  validateParam", test_validateParam);
       CU_add_test( *suite, "test  checkRootUpdate", test_checkRootUpdate);
-      CU_add_test( *suite, "test  checkDBList", test_checkDBList);
+      CU_add_test( *suite, "test  checkRootDelete_success", test_checkRootDelete_success);
+      CU_add_test( *suite, "test  checkRootDelete_fail", test_checkRootDelete_fail);
+     CU_add_test( *suite, "test  checkDBList", test_checkDBList);
       CU_add_test( *suite, "test  updateDBlist", test_updateDBlist);
       CU_add_test( *suite, "test  pack append doc", test_appendedDoc);
 #ifdef FEATURE_SUPPORT_AKER
